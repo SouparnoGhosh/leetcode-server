@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int          @id @default(autoincrement())
+  username     String       @unique
+  email        String?      @unique
+  passwordHash String       @map("password_hash")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  submissions  Submission[]
+  userProgress UserProgress[]
+}
+
+model Problem {
+  id           Int                  @id @default(autoincrement())
+  title        String
+  slug         String               @unique
+  description  String
+  difficulty   Difficulty
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt      @map("updated_at")
+
+  testCases           TestCase[]
+  submissions         Submission[]
+  userProgress        UserProgress[]
+  problemTagMappings  ProblemTagMapping[]
+}
+
+model Tag {
+  id                  Int                  @id @default(autoincrement())
+  name                String               @unique
+
+  problemTagMappings  ProblemTagMapping[]
+}
+
+model ProblemTagMapping {
+  problemId Int
+  tagId     Int
+
+  problem   Problem @relation(fields: [problemId], references: [id])
+  tag       Tag     @relation(fields: [tagId], references: [id])
+
+  @@id([problemId, tagId])
+}
+
+model TestCase {
+  id             Int      @id @default(autoincrement())
+  problemId      Int      @map("problem_id")
+  input          String
+  expectedOutput String   @map("expected_output")
+
+  problem        Problem  @relation(fields: [problemId], references: [id])
+}
+
+model Submission {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @map("user_id")
+  problemId   Int       @map("problem_id")
+  code        String
+  language    String
+  status      String
+  runtime     Float?
+  memory      Float?
+  submittedAt DateTime  @default(now()) @map("submitted_at")
+
+  user        User      @relation(fields: [userId], references: [id])
+  problem     Problem   @relation(fields: [problemId], references: [id])
+}
+
+model Language {
+  id   Int     @id @default(autoincrement())
+  name String  @unique
+}
+
+model UserProgress {
+  userId          Int       @map("user_id")
+  problemId       Int       @map("problem_id")
+  status          String
+  lastAttemptedAt DateTime? @map("last_attempted_at")
+
+  user            User      @relation(fields: [userId], references: [id])
+  problem         Problem   @relation(fields: [problemId], references: [id])
+
+  @@id([userId, problemId])
+}
+
+enum Difficulty {
+  Easy
+  Medium
+  Hard
+}
