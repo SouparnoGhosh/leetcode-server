@@ -7,6 +7,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum FailureReason {
+  SyntaxError
+  RuntimeError
+  CompilationError
+  MemoryLimitExceeded
+  TimeLimitExceeded
+  SecurityViolation
+  None
+}
+
+enum Difficulty {
+  Easy
+  Medium
+  Hard
+}
+
 model User {
   id           Int          @id @default(autoincrement())
   username     String       @unique
@@ -19,18 +35,49 @@ model User {
 }
 
 model Problem {
-  id           Int                  @id @default(autoincrement())
-  title        String
-  slug         String               @unique
-  description  String
-  difficulty   Difficulty
-  createdAt    DateTime             @default(now()) @map("created_at")
-  updatedAt    DateTime             @updatedAt      @map("updated_at")
+  id                  Int                  @id @default(autoincrement())
+  title               String
+  slug                String               @unique
+  description         String
+  difficulty          Difficulty
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt      @map("updated_at")
 
   testCases           TestCase[]
   submissions         Submission[]
   userProgress        UserProgress[]
   problemTagMappings  ProblemTagMapping[]
+}
+
+model TestCase {
+  id             Int      @id @default(autoincrement())
+  problemId      Int      @map("problem_id")
+  input          String
+  expectedOutput String   @map("expected_output")
+
+  problem        Problem  @relation(fields: [problemId], references: [id])
+}
+
+model Submission {
+  id              Int           @id @default(autoincrement())
+  userId          Int           @map("user_id")
+  problemId       Int           @map("problem_id")
+  code            String
+  language        String
+  status          String
+  runtime         Float?
+  memory          Float?
+  submittedAt     DateTime      @default(now()) @map("submitted_at")
+  failureReason   FailureReason @default(None)
+  testCasesPassed Int           @default(0)
+
+  user            User          @relation(fields: [userId], references: [id])
+  problem         Problem       @relation(fields: [problemId], references: [id])
+}
+
+model Language {
+  id   Int     @id @default(autoincrement())
+  name String  @unique
 }
 
 model Tag {
@@ -50,35 +97,6 @@ model ProblemTagMapping {
   @@id([problemId, tagId])
 }
 
-model TestCase {
-  id             Int      @id @default(autoincrement())
-  problemId      Int      @map("problem_id")
-  input          String
-  expectedOutput String   @map("expected_output")
-
-  problem        Problem  @relation(fields: [problemId], references: [id])
-}
-
-model Submission {
-  id          Int       @id @default(autoincrement())
-  userId      Int       @map("user_id")
-  problemId   Int       @map("problem_id")
-  code        String
-  language    String
-  status      String
-  runtime     Float?
-  memory      Float?
-  submittedAt DateTime  @default(now()) @map("submitted_at")
-
-  user        User      @relation(fields: [userId], references: [id])
-  problem     Problem   @relation(fields: [problemId], references: [id])
-}
-
-model Language {
-  id   Int     @id @default(autoincrement())
-  name String  @unique
-}
-
 model UserProgress {
   userId          Int       @map("user_id")
   problemId       Int       @map("problem_id")
@@ -89,10 +107,4 @@ model UserProgress {
   problem         Problem   @relation(fields: [problemId], references: [id])
 
   @@id([userId, problemId])
-}
-
-enum Difficulty {
-  Easy
-  Medium
-  Hard
 }
