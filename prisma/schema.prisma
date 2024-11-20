@@ -7,14 +7,28 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enums
+
 enum FailureReason {
-  SyntaxError
-  RuntimeError
-  CompilationError
-  MemoryLimitExceeded
-  TimeLimitExceeded
-  SecurityViolation
   None
+  WrongAnswer
+  SyntaxError
+  CompilationError
+  RuntimeError
+  TimeLimitExceeded
+  MemoryLimitExceeded
+  SecurityViolation
+}
+
+enum SubmissionStatus {
+  Accepted
+  WrongAnswer
+  SyntaxError
+  CompilationError
+  RuntimeError
+  TimeLimitExceeded
+  MemoryLimitExceeded
+  SecurityViolation
 }
 
 enum Difficulty {
@@ -23,88 +37,105 @@ enum Difficulty {
   Hard
 }
 
+enum ProgressStatus {
+  Attempted
+  Solved
+}
+
+// Models
+
+// * Checked this
 model User {
-  id           Int          @id @default(autoincrement())
-  username     String       @unique
-  email        String?      @unique
-  passwordHash String       @map("password_hash")
-  createdAt    DateTime     @default(now()) @map("created_at")
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  email        String?  @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   submissions  Submission[]
   userProgress UserProgress[]
 }
 
+// * Checked this
 model Problem {
-  id                  Int                  @id @default(autoincrement())
-  title               String
-  slug                String               @unique
-  description         String
-  difficulty          Difficulty
-  createdAt           DateTime             @default(now()) @map("created_at")
-  updatedAt           DateTime             @updatedAt      @map("updated_at")
+  id          Int        @id @default(autoincrement())
+  title       String
+  slug        String     @unique
+  description String
+  difficulty  Difficulty
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
 
-  testCases           TestCase[]
-  submissions         Submission[]
-  userProgress        UserProgress[]
-  problemTagMappings  ProblemTagMapping[]
+  testCases          TestCase[]
+  submissions        Submission[]
+  userProgress       UserProgress[]
+  problemTagMappings ProblemTagMapping[]
 }
 
 model TestCase {
-  id             Int      @id @default(autoincrement())
-  problemId      Int      @map("problem_id")
+  id             Int     @id @default(autoincrement())
+  problemId      Int     @map("problem_id")
   input          String
-  expectedOutput String   @map("expected_output")
+  expectedOutput String  @map("expected_output")
+  isSample       Boolean @default(false)
 
-  problem        Problem  @relation(fields: [problemId], references: [id])
+  problem Problem @relation(fields: [problemId], references: [id])
 }
 
+// * Checked this
 model Submission {
-  id              Int           @id @default(autoincrement())
-  userId          Int           @map("user_id")
-  problemId       Int           @map("problem_id")
+  id              Int              @id @default(autoincrement())
+  userId          Int              @map("user_id")
+  problemId       Int              @map("problem_id")
   code            String
-  language        String
-  status          String
+  languageId      Int              @map("language_id")
+  language        Language         @relation(fields: [languageId], references: [id])
+  status          SubmissionStatus
   runtime         Float?
   memory          Float?
-  submittedAt     DateTime      @default(now()) @map("submitted_at")
-  failureReason   FailureReason @default(None)
-  testCasesPassed Int           @default(0)
+  submittedAt     DateTime         @default(now()) @map("submitted_at")
+  failureReason   FailureReason    @default(None)
+  testCasesPassed Int              @default(0)
+  totalTestCases  Int              @default(0)
+  errorMessage    String?
 
-  user            User          @relation(fields: [userId], references: [id])
-  problem         Problem       @relation(fields: [problemId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+  problem Problem @relation(fields: [problemId], references: [id])
 }
 
+// * Checked this
 model Language {
-  id   Int     @id @default(autoincrement())
-  name String  @unique
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  extensions  String[]
+  submissions Submission[]
 }
 
 model Tag {
-  id                  Int                  @id @default(autoincrement())
-  name                String               @unique
+  id   Int    @id @default(autoincrement())
+  name String @unique
 
-  problemTagMappings  ProblemTagMapping[]
+  problemTagMappings ProblemTagMapping[]
 }
 
 model ProblemTagMapping {
   problemId Int
   tagId     Int
 
-  problem   Problem @relation(fields: [problemId], references: [id])
-  tag       Tag     @relation(fields: [tagId], references: [id])
+  problem Problem @relation(fields: [problemId], references: [id])
+  tag     Tag     @relation(fields: [tagId], references: [id])
 
   @@id([problemId, tagId])
 }
 
 model UserProgress {
-  userId          Int       @map("user_id")
-  problemId       Int       @map("problem_id")
-  status          String
-  lastAttemptedAt DateTime? @map("last_attempted_at")
+  userId          Int            @map("user_id")
+  problemId       Int            @map("problem_id")
+  status          ProgressStatus
+  lastAttemptedAt DateTime?      @map("last_attempted_at")
 
-  user            User      @relation(fields: [userId], references: [id])
-  problem         Problem   @relation(fields: [problemId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+  problem Problem @relation(fields: [problemId], references: [id])
 
   @@id([userId, problemId])
 }
